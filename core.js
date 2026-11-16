@@ -19,7 +19,22 @@
     return String(v).replace(/\.0$/, "");
   }
   function defaults() {
-    return { unidad: "kg", barra: 20, barraLb: 45, discosKg: [25, 20, 15, 10, 5, 2.5, 1.25], discosLb: [45, 35, 25, 10, 5, 2.5], saltoKg: 2.5, saltoLb: 5, descanso: 90, sonido: true };
+    return { unidad: "kg", barra: 20, barraLb: 45, discosKg: [25, 20, 15, 10, 5, 2.5, 1.25], discosLb: [45, 35, 25, 10, 5, 2.5], saltoKg: 2.5, saltoLb: 5, descanso: 90, sonido: true, metaDias: 0 };
+  }
+
+  /* ---------- meta semanal: cuántos días entrenas por semana ---------- */
+  function lunes(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()), w = x.getDay() || 7; x.setDate(x.getDate() - (w - 1)); return x; }
+  function fstr(d) { return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  function diasSemana(fechas, inicio) {   // días distintos con entrenamiento entre el lunes «inicio» y el domingo siguiente
+    var a = fstr(inicio), f = new Date(inicio); f.setDate(f.getDate() + 7); var b = fstr(f), vistos = {}, n = 0;
+    fechas.forEach(function (x) { if (x >= a && x < b && !vistos[x]) { vistos[x] = 1; n++; } });
+    return n;
+  }
+  function rachaSemanas(fechas, meta, hoy) {   // semanas seguidas cumpliendo la meta (la semana en curso suma si ya la cumpliste, pero no corta la racha si aún no)
+    if (!meta) return 0;
+    var ini = lunes(hoy), n = diasSemana(fechas, ini) >= meta ? 1 : 0;
+    for (var i = 1; i < 600; i++) { var w = new Date(ini); w.setDate(ini.getDate() - 7 * i); if (diasSemana(fechas, w) >= meta) n++; else break; }
+    return n;
   }
 
   /* ---------- cálculos de progreso ---------- */
@@ -150,7 +165,7 @@
     });
   }
 
-  var api = { KG_LB: KG_LB, uid: uid, hoy: hoy, norm: norm, r4: r4, toDisp: toDisp, toKg: toKg, fmt: fmt, defaults: defaults, e1rm: e1rm, setsHechas: setsHechas, resumenEj: resumenEj, historial: historial,
+  var api = { lunes: lunes, fstr: fstr, diasSemana: diasSemana, rachaSemanas: rachaSemanas, KG_LB: KG_LB, uid: uid, hoy: hoy, norm: norm, r4: r4, toDisp: toDisp, toKg: toKg, fmt: fmt, defaults: defaults, e1rm: e1rm, setsHechas: setsHechas, resumenEj: resumenEj, historial: historial,
     records: records, sugerir: sugerir, subida: subida, discos: discos, PLANTILLAS: PLANTILLAS, vacia: vacia, cargar: cargar, guardar: guardar, marcar: marcar, docsPendientes: docsPendientes, aplicarRemotos: aplicarRemotos, sincronizar: sincronizar };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.GymCore = api;
 })(typeof window !== "undefined" ? window : this);

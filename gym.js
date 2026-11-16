@@ -1,7 +1,7 @@
 /* Gym · pantallas y comportamiento. Funciona sin conexión; la hoja de cálculo se pone al día cuando hay red. */
 (function () {
   "use strict";
-  var C = window.GymCore, CFG = window.FG_CFG || {}, VERSION = "0.3.0";
+  var C = window.GymCore, CFG = window.FG_CFG || {}, VERSION = "0.4.0";
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var LS = (function () { try { localStorage.setItem("_t", "1"); localStorage.removeItem("_t"); return localStorage; } catch (e) { var m = {}; return { getItem: function (k) { return m[k] || null; }, setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; } }; } })();
@@ -150,9 +150,18 @@
     var ses = sesionesHechas(), ini = inicioSemana(d), semana = {};
     ses.forEach(function (s) { semana[s.fecha] = 1; });
     var strip = "", nsem = 0;
-    for (var i = 0; i < 7; i++) { var dd = new Date(ini); dd.setDate(ini.getDate() + i); var k = fstr(dd), hecho = !!semana[k]; if (hecho) nsem++; strip += '<div>' + DIAS[i] + '<span class="' + (hecho ? "d" : "") + (k === C.hoy() ? " h" : "") + '">' + dd.getDate() + "</span></div>"; }
+    for (var i = 0; i < 7; i++) { var dd = new Date(ini); dd.setDate(ini.getDate() + i); var k = fstr(dd), hecho = !!semana[k]; if (hecho) nsem++; var plan = rs.some(function (r) { return (r.dias || []).indexOf(i + 1) >= 0; }); strip += '<div class="' + (plan ? "p " : "") + (hecho ? "d" : "") + '">' + DIAS[i] + '<span class="' + (k === C.hoy() ? "h" : "") + '">' + dd.getDate() + "</span></div>"; }
     var vol = 0; ses.forEach(function (s) { if (s.fecha >= fstr(ini)) (s.ej || []).forEach(function (e) { vol += C.resumenEj(e).vol; }); });
-    h += '<div class="sec"><span>Esta semana</span></div><div class="card"><div class="wk">' + strip + "</div></div>";
+    var meta = db.ajustes.metaDias || 0, fechas = ses.map(function (x) { return x.fecha; }), nHechos = C.diasSemana(fechas, ini), racha = C.rachaSemanas(fechas, meta, d);
+    h += '<div class="sec"><span>Esta semana</span></div><div class="card">';
+    if (meta) {
+      var falta = Math.max(0, meta - nHechos), pc = Math.min(100, Math.round(nHechos / meta * 100));
+      h += '<div class="rowh"><b style="font-size:17px">' + nHechos + " de " + meta + ' días</b><span class="k">' + (falta ? "te " + (falta === 1 ? "falta 1 día" : "faltan " + falta + " días") : "¡meta cumplida!") + '</span></div><div class="prog ' + (falta ? "" : "ok") + '"><i style="width:' + pc + '%"></i></div>' +
+        '<div class="k" style="margin-bottom:12px">' + (racha ? "🔥 " + racha + (racha === 1 ? " semana seguida" : " semanas seguidas") + " cumpliendo tu meta" : "Cumple la meta esta semana para empezar tu racha") + ' · <a class="link" data-a="cambiarMeta" style="cursor:pointer">cambiar</a></div>';
+    } else {
+      h += '<div style="font-weight:700;font-size:17px">¿Cuántos días vas a entrenar por semana?</div><div class="k" style="margin-top:3px">Te mostraré tu avance y tu racha de semanas cumplidas.</div><div class="dias">' + [2, 3, 4, 5, 6, 7].map(function (n) { return '<button data-a="meta" data-v="' + n + '">' + n + "</button>"; }).join("") + "</div><div style='height:12px'></div>";
+    }
+    h += '<div class="wk">' + strip + "</div></div>";
     h += '<div class="stats" style="margin-top:12px"><div class="card"><small>Entrenos</small><b>' + nsem + '</b></div><div class="card"><small>Volumen</small><b>' + Math.round(C.toDisp(vol, U())).toLocaleString("es") + '<small> ' + U() + '</small></b></div><div class="card"><small>Total</small><b>' + ses.length + "</b></div></div>";
     if (ses.length) {
       var u = ses[ses.length - 1], nser = 0; (u.ej || []).forEach(function (e) { nser += C.setsHechas(e).length; });
@@ -324,6 +333,7 @@
     var barras = u === "kg" ? [20, 15, 10] : [45, 35, 25], bv = u === "kg" ? a.barra : a.barraLb, discos = u === "kg" ? [25, 20, 15, 10, 5, 2.5, 1.25, 1] : [55, 45, 35, 25, 10, 5, 2.5, 1.25], dsel = u === "kg" ? a.discosKg : a.discosLb;
     h += '<div class="sec"><span>Barra y discos</span></div><div class="card"><div class="k">Peso de la barra (' + u + ')</div><div class="seg" style="margin:8px 0 14px">' + barras.map(function (b) { return '<button class="' + (bv === b ? "on" : "") + '" data-a="barra" data-v="' + b + '">' + b + "</button>"; }).join("") + '</div><div class="k">Discos disponibles</div><div class="chips" style="flex-wrap:wrap;overflow:visible;margin:8px 0 0;padding:0">' + discos.map(function (d) { return '<button class="chip ' + (dsel.indexOf(d) >= 0 ? "on" : "") + '" data-a="disco" data-v="' + d + '">' + d + "</button>"; }).join("") + "</div></div>";
     var saltos = u === "kg" ? [1, 1.25, 2, 2.5, 5] : [2.5, 5, 10], sv = u === "kg" ? a.saltoKg : a.saltoLb;
+    h += '<div class="sec"><span>Meta semanal</span></div><div class="card"><div class="k">Días que vas a entrenar por semana</div><div class="dias" style="margin-top:10px">' + [2, 3, 4, 5, 6, 7].map(function (n) { return '<button class="' + (a.metaDias === n ? "on" : "") + '" data-a="meta" data-v="' + n + '">' + n + "</button>"; }).join("") + '</div><div class="acts" style="margin-top:10px"><button class="btn sec" data-a="meta" data-v="0">Sin meta</button></div></div>';
     h += '<div class="sec"><span>Entrenamiento</span></div><div class="card"><div class="k">Cuánto subir cuando cumples todas las series (' + u + ')</div><div class="seg" style="margin:8px 0 14px">' + saltos.map(function (b) { return '<button class="' + (sv === b ? "on" : "") + '" data-a="salto" data-v="' + b + '">' + b + "</button>"; }).join("") + '</div><div class="k">Descanso por defecto</div><div class="seg" style="margin:8px 0 6px">' + [60, 90, 120, 180].map(function (b) { return '<button class="' + (a.descanso === b ? "on" : "") + '" data-a="desc" data-v="' + b + '">' + (b / 60 >= 1 && b % 60 === 0 ? b / 60 + " min" : b + " s") + "</button>"; }).join("") + '</div><div class="row2" style="margin-top:6px"><div>Sonido al terminar el descanso<small>En iPhone una web no puede vibrar, pero sí sonar.</small></div><button class="sw ' + (a.sonido ? "on" : "") + '" data-a="sonido" aria-label="Sonido"></button></div></div>';
     h += '<div class="sec"><span>Sincronización</span></div><div class="card"><div class="row2"><div>Hoja de cálculo<small>' + esc(!c.token ? "Sin vincular: solo se guarda en este dispositivo" : S.sync || "Lista para sincronizar") + "</small></div><button class=\"btn sec\" data-a=\"sync\">Sincronizar</button></div><div class=\"k\" style=\"margin-top:8px\">Pendientes de enviar: " + Object.keys(db.pend).length + "</div>" + (db.sync.url ? '<a class="btn sec full" target="_blank" rel="noopener" href="' + esc(db.sync.url) + '">Abrir mi hoja de cálculo de Gym</a><div class="k" style="margin-top:8px;line-height:1.4">Se llama «Fergard · Gym» y vive en tu Google Drive. «Series» tiene una fila por serie que hiciste.</div>' : "") + "</div>";
     h += '<div class="sec"><span>Espacio en este dispositivo</span></div><div class="card"><div class="k" style="line-height:1.5">Tus datos viven en tu hoja de cálculo. Aquí solo se guarda una copia pequeña (texto) y lo que no se haya podido subir todavía. Las fotos <b>no</b> se guardan: se piden en línea.</div><div class="row2"><div>Usado ahora<small id="uso">calculando…</small></div></div><div class="acts" style="margin-top:0"><button class="btn sec" data-a="liberar">Liberar espacio</button></div><div class="k" style="margin-top:8px;line-height:1.4">«Liberar espacio» borra la copia de este dispositivo y la vuelve a bajar de tu hoja. Solo funciona si todo está subido.</div></div>';
@@ -429,6 +439,8 @@
 
   var A = {
     cerrar: function () { cerrar(); },
+    meta: function (el) { db.ajustes.metaDias = +el.dataset.v; touch("ajustes", "ajustes", db.ajustes); toast(db.ajustes.metaDias ? "Meta: " + db.ajustes.metaDias + " días por semana" : "Sin meta semanal"); render(true); },
+    cambiarMeta: function () { location.hash = "#/ajustes"; },
     ing: function () { S.ing = !S.ing; var r = parse(); cargarInstr(/^\d+$/.test(r.arg) ? parseInt(r.arg, 10) : r.arg); },
     iniciar: function (el) { iniciar(el.dataset.id); },
     nueva: function () { var id = C.uid(); db.rutinas[id] = { id: id, nombre: "Nueva rutina", dias: [], items: [], orden: Date.now() }; touch("rutina", id, db.rutinas[id]); location.hash = "#/rutina/" + id; },
