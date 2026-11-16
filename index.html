@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Gym">
+<meta name="theme-color" content="#0C0C0D">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Gym</title>
+<link rel="stylesheet" href="gym.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true">
+  <svg class="rack" viewBox="0 0 300 520" preserveAspectRatio="xMaxYMin slice">
+    <defs><pattern id="holes" width="14" height="22" patternUnits="userSpaceOnUse"><circle cx="7" cy="11" r="2.4" fill="#000"/></pattern></defs>
+    <rect x="196" y="0" width="34" height="520" fill="#fff"/><rect x="196" y="0" width="34" height="520" fill="url(#holes)"/>
+    <rect x="86" y="0" width="34" height="520" fill="#fff"/><rect x="86" y="0" width="34" height="520" fill="url(#holes)"/>
+    <rect x="0" y="206" width="300" height="9" rx="4" fill="#fff"/>
+    <g fill="#fff"><rect x="-6" y="168" width="22" height="84" rx="6"/><rect x="20" y="180" width="16" height="60" rx="5"/><rect x="284" y="168" width="22" height="84" rx="6"/><rect x="264" y="180" width="16" height="60" rx="5"/></g>
+  </svg>
+</div>
+<main id="view"></main>
+<div id="resting" hidden></div>
+<nav class="tabs2" id="tabs" aria-label="Secciones">
+  <a href="#/hoy" data-t="hoy"><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Hoy</a>
+  <a href="#/rutinas" data-t="rutinas"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r=".8"/><circle cx="3.5" cy="12" r=".8"/><circle cx="3.5" cy="18" r=".8"/></svg>Rutinas</a>
+  <a href="#/biblioteca" data-t="biblioteca"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Ejercicios</a>
+  <a href="#/progreso" data-t="progreso"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><path d="M8 15l4-5 3 3 5-7"/></svg>Progreso</a>
+  <a href="#/ajustes" data-t="ajustes"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Ajustes</a>
+</nav>
+<div id="sheet" class="sheet-wrap" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="config.js"></script>
+<script src="acceso.js"></script>
+<script src="core.js"></script>
+<script src="gym.js"></script>
+</body>
+</html>
