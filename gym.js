@@ -1,7 +1,7 @@
 /* Gym · pantallas y comportamiento. Funciona sin conexión; la hoja de cálculo se pone al día cuando hay red. */
 (function () {
   "use strict";
-  var C = window.GymCore, CFG = window.FG_CFG || {}, VERSION = "0.2.0";
+  var C = window.GymCore, CFG = window.FG_CFG || {}, VERSION = "0.3.0";
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
   var LS = (function () { try { localStorage.setItem("_t", "1"); localStorage.removeItem("_t"); return localStorage; } catch (e) { var m = {}; return { getItem: function (k) { return m[k] || null; }, setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; } }; } })();
@@ -47,7 +47,7 @@
   /* ---------- sincronización ---------- */
   function post(url, body) { return fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) }).then(function (r) { return r.json(); }); }
   var syncTimer = null, syncing = false;
-  function schedSync() { clearTimeout(syncTimer); syncTimer = setTimeout(function () { sync(false); }, 4000); }
+  function schedSync() { clearTimeout(syncTimer); syncTimer = setTimeout(function () { sync(false); }, 1200); }
   function sync(manual) {
     var c = cfg();
     if (!c.token || !c.url) { if (manual) toast("Este dispositivo no está vinculado a Fergard"); return Promise.resolve(); }
@@ -59,6 +59,7 @@
     }).catch(function () { S.sync = "Sin conexión · se enviará después"; if (manual) toast("Sin conexión"); }).then(function () { syncing = false; });
   }
   window.addEventListener("online", function () { sync(false); });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) sync(false); });   // al volver a la app se pone al día con la nube
 
   /* ---------- descanso entre series ---------- */
   var restInt = null;
@@ -123,8 +124,14 @@
   function hasToken() { return !!cfg().token; }
   function bannerVinculo() { return ""; }
 
+  function nube() {
+    var n = Object.keys(db.pend).length;
+    if (n) return '<span class="up" style="margin:0;color:#FFD34D;background:rgba(255,211,77,.14)">⏳ ' + n + (n === 1 ? " pendiente de subir" : " pendientes de subir") + "</span>";
+    return db.sync.ok ? '<span class="up" style="margin:0">☁ En la nube</span>' : "";
+  }
   views.hoy = function () {
-    var d = new Date(), h = '<div class="hd"><div><div class="k">' + esc(fechaLarga(d)) + "</div><h1>Hoy</h1></div></div>" + bannerVinculo();
+    var d = new Date(), h = '<div class="hd"><div><div class="k">' + esc(fechaLarga(d)) + "</div><h1>Hoy</h1></div>" + nube() + "</div>" + bannerVinculo();
+    if (S.cargando) return h + '<div class="card empty"><b>Cargando tus datos…</b>Se están bajando de tu hoja de cálculo.</div>';
     var rs = rutinasArr();
     if (db.activa && db.sesiones[db.activa]) {
       var s = db.sesiones[db.activa];
@@ -319,11 +326,19 @@
     var saltos = u === "kg" ? [1, 1.25, 2, 2.5, 5] : [2.5, 5, 10], sv = u === "kg" ? a.saltoKg : a.saltoLb;
     h += '<div class="sec"><span>Entrenamiento</span></div><div class="card"><div class="k">Cuánto subir cuando cumples todas las series (' + u + ')</div><div class="seg" style="margin:8px 0 14px">' + saltos.map(function (b) { return '<button class="' + (sv === b ? "on" : "") + '" data-a="salto" data-v="' + b + '">' + b + "</button>"; }).join("") + '</div><div class="k">Descanso por defecto</div><div class="seg" style="margin:8px 0 6px">' + [60, 90, 120, 180].map(function (b) { return '<button class="' + (a.descanso === b ? "on" : "") + '" data-a="desc" data-v="' + b + '">' + (b / 60 >= 1 && b % 60 === 0 ? b / 60 + " min" : b + " s") + "</button>"; }).join("") + '</div><div class="row2" style="margin-top:6px"><div>Sonido al terminar el descanso<small>En iPhone una web no puede vibrar, pero sí sonar.</small></div><button class="sw ' + (a.sonido ? "on" : "") + '" data-a="sonido" aria-label="Sonido"></button></div></div>';
     h += '<div class="sec"><span>Sincronización</span></div><div class="card"><div class="row2"><div>Hoja de cálculo<small>' + esc(!c.token ? "Sin vincular: solo se guarda en este dispositivo" : S.sync || "Lista para sincronizar") + "</small></div><button class=\"btn sec\" data-a=\"sync\">Sincronizar</button></div><div class=\"k\" style=\"margin-top:8px\">Pendientes de enviar: " + Object.keys(db.pend).length + "</div>" + (db.sync.url ? '<a class="btn sec full" target="_blank" rel="noopener" href="' + esc(db.sync.url) + '">Abrir mi hoja de cálculo de Gym</a><div class="k" style="margin-top:8px;line-height:1.4">Se llama «Fergard · Gym» y vive en tu Google Drive. «Series» tiene una fila por serie que hiciste.</div>' : "") + "</div>";
-    h += '<div class="sec"><span>Sin internet</span></div><div class="card"><div class="k" style="line-height:1.45">Las pantallas y tus datos ya funcionan sin internet. Las fotos se guardan al verlas; para tenerlas todas listas antes de ir al gimnasio:</div><div class="acts"><button class="btn sec" data-a="offline" data-v="mini">Miniaturas (≈4 MB)</button><button class="btn sec" data-a="offline" data-v="todo">Todas las fotos (≈41 MB)</button></div><div class="k" id="offp" style="margin-top:8px"></div></div>';
+    h += '<div class="sec"><span>Espacio en este dispositivo</span></div><div class="card"><div class="k" style="line-height:1.5">Tus datos viven en tu hoja de cálculo. Aquí solo se guarda una copia pequeña (texto) y lo que no se haya podido subir todavía. Las fotos <b>no</b> se guardan: se piden en línea.</div><div class="row2"><div>Usado ahora<small id="uso">calculando…</small></div></div><div class="acts" style="margin-top:0"><button class="btn sec" data-a="liberar">Liberar espacio</button></div><div class="k" style="margin-top:8px;line-height:1.4">«Liberar espacio» borra la copia de este dispositivo y la vuelve a bajar de tu hoja. Solo funciona si todo está subido.</div></div>';
     h += '<div class="sec"><span>Acceso</span></div><div id="acc"></div><div class="sec"><span>Mis datos</span></div><div class="card"><div class="acts" style="margin-top:0"><button class="btn sec" data-a="exportar">Exportar copia (JSON)</button><button class="btn bad" data-a="reset">Borrar datos de este dispositivo</button></div></div>';
     h += '<p class="k" style="text-align:center;margin-top:24px">Gym v' + VERSION + " · base de ejercicios free-exercise-db (dominio público)</p>";
     return h;
   };
+
+  function usoEspacio() {
+    var el = $("#uso"); if (!el) return;
+    var ls = 0; try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); ls += (k.length + (localStorage.getItem(k) || "").length) * 2; } } catch (e) {}
+    var f = function (b) { return b < 1048576 ? Math.max(1, Math.round(b / 1024)) + " KB" : (b / 1048576).toFixed(1) + " MB"; };
+    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(function (e) { el.textContent = "≈ " + f(e.usage || ls) + " (datos: " + f(ls) + ")"; }).catch(function () { el.textContent = "datos: " + f(ls); });
+    else el.textContent = "datos: " + f(ls);
+  }
 
   /* ---------- enrutador ---------- */
   function parse() {
@@ -341,7 +356,7 @@
     $("#view").innerHTML = v(r);
     $$("#tabs a").forEach(function (a) { var t = a.getAttribute("data-t"); a.classList.toggle("on", t === r.name || (t === "hoy" && r.name === "sesion") || (t === "rutinas" && r.name === "rutina") || (t === "biblioteca" && r.name === "ej") || (t === "progreso" && r.name === "ej" && false)); });
     window.scrollTo(0, y);
-    if (r.name === "ajustes" && window.FergardAcceso && $("#acc")) FergardAcceso.panel($("#acc"));
+    if (r.name === "ajustes") { usoEspacio(); if (window.FergardAcceso && $("#acc")) FergardAcceso.panel($("#acc")); }
     if (r.name === "ej") cargarInstr(/^\d+$/.test(r.arg) ? parseInt(r.arg, 10) : r.arg);
     if (r.name === "sesion" || r.name === "hoy") { clearInterval(render.tm); render.tm = setInterval(function () { var s = db.activa && db.sesiones[db.activa], e = $("#el") || $("#el0"); if (s && e) e.textContent = (e.id === "el0" ? "Empezó hace " : "") + hhmm(Date.now() - s.inicio); }, 1000); }
     var rs = $("#resting"); if (rs && (!db.activa || !S.rest)) { if (!S.rest) rs.hidden = true; }
@@ -486,18 +501,15 @@
     desc: function (el) { db.ajustes.descanso = +el.dataset.v; touch("ajustes", "ajustes", db.ajustes); render(true); },
     sonido: function () { audioUnlock(); db.ajustes.sonido = !db.ajustes.sonido; touch("ajustes", "ajustes", db.ajustes); render(true); if (db.ajustes.sonido) beep(); },
     sync: function () { sync(true).then(function () { render(true); }); },
-    offline: function (el) {
-      if (!window.caches) { toast("Este navegador no permite guardar fotos sin conexión"); return; }
-      var urls = []; EX.forEach(function (x) { urls.push("t/" + x.i + ".jpg"); if (el.dataset.v === "todo") { urls.push("img/" + x.i + "a.jpg"); if (x.k > 1) urls.push("img/" + x.i + "b.jpg"); } });
-      var n = 0, fallos = 0, p = $("#offp"), cur = 0;
-      caches.open("gym-img-v1").then(function (cache) {
-        function next() {
-          if (cur >= urls.length) { if (p) p.textContent = "Listo: " + (n - fallos) + " fotos guardadas" + (fallos ? " (" + fallos + " fallaron)" : "") + "."; return Promise.resolve(); }
-          var u = urls[cur++], abs = new URL(u, location.href).href;
-          return cache.match(abs).then(function (hit) { return hit ? null : fetch(abs).then(function (r) { if (r.ok) return cache.put(abs, r); fallos++; }); }).catch(function () { fallos++; }).then(function () { n++; if (p && n % 25 === 0) p.textContent = "Guardando… " + Math.round(n / urls.length * 100) + " %"; return next(); });
-        }
-        var w = []; for (var i = 0; i < 6; i++) w.push(next()); return Promise.all(w);
-      });
+    liberar: function () {
+      if (Object.keys(db.pend).length) { toast("Hay datos sin subir: espera a que se sincronicen"); return; }
+      if (!hasToken() || !db.sync.ok) { toast("Todavía no se ha sincronizado con tu hoja: no se puede liberar"); return; }
+      sheet("<h3>¿Liberar espacio?</h3><div class='k'>Se borra la copia de este dispositivo y se vuelve a bajar de tu hoja de cálculo. Tarda unos segundos.</div><button class='btn full' data-a='liberarYa'>Liberar espacio</button><button class='btn sec full' data-a='cerrar'>Cancelar</button>");
+    },
+    liberarYa: function () {
+      cerrar(); LS.removeItem("gym_db"); db = C.cargar(LS); S.cargando = true;
+      if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { if (k.indexOf("gym-img") === 0) caches.delete(k); }); });
+      render(); sync(true).then(function () { S.cargando = false; render(); usoEspacio(); });
     },
     exportar: function () {
       var blob = new Blob([JSON.stringify(db, null, 1)], { type: "application/json" }), url = URL.createObjectURL(blob), a = document.createElement("a");
@@ -537,9 +549,10 @@
 
   /* ---------- arranque ---------- */
   function boot() {
+    var vacio = !db.sync.ult && !Object.keys(db.rutinas).length && !Object.keys(db.sesiones).length;
+    if (vacio && hasToken()) S.cargando = true;
     render();
-    if (db.activa && S.rest === null) { /* el descanso no se conserva al recargar */ }
-    sync(false);
+    sync(false).then(function () { if (S.cargando) { S.cargando = false; render(); } });
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
   }
   function cargarTodo() {
@@ -549,7 +562,7 @@
   }
   FergardAcceso.iniciar({
     app: "gym", nombre: "Gym", clientId: CFG.CLIENT_ID, onListo: cargarTodo,
-    tema: { bg: "#0C0C0D", fg: "#F4F4F5", mut: "#9A9AA2", acento: "#FF7262", btnBg: "#F4F4F5", btnFg: "#0C0C0D" },
+    tema: { bg: "#141112", fg: "#F4F4F5", mut: "#9A9AA2", acento: "#FF7262", btnBg: "#F4F4F5", btnFg: "#0C0C0D" },
     marca: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#FF5A47" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>'
   });
 })();

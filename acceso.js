@@ -30,9 +30,10 @@
       ".fgx-card{border:1px solid rgba(128,128,128,.25);border-radius:18px;padding:14px 16px;background:rgba(128,128,128,.07)}.fgx-card .r{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(128,128,128,.2)}.fgx-card .r:last-child{border:0}" +
       ".fgx-card small{display:block;opacity:.65;font-size:12.5px;margin-top:2px}.fgx-card button{font:inherit;border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;background:rgba(128,128,128,.2);color:inherit;margin-top:8px}.fgx-code{font-size:42px;font-weight:800;letter-spacing:6px;text-align:center;font-variant-numeric:tabular-nums;margin:8px 0 0}";
   }
+  function estilo() { if (document.getElementById("fgx-css")) return; var st = document.createElement("style"); st.id = "fgx-css"; st.textContent = css(); document.head.appendChild(st); }
   function montar() {
     if (document.getElementById("fgx")) return document.getElementById("fgx");
-    var st = document.createElement("style"); st.textContent = css(); document.head.appendChild(st);
+    estilo();
     var d = document.createElement("div"); d.id = "fgx"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", "Acceso a " + O.nombre); document.body.appendChild(d); return d;
   }
   function cerrar() { var d = document.getElementById("fgx"); if (d) d.remove(); if (!listo) { listo = true; if (O.onListo) O.onListo(); } }
@@ -77,7 +78,7 @@
 
   var A = {
     iniciar: function (o) {
-      O = o; var c = cfg();
+      O = o; var c = cfg(); if (document.head) estilo(); else document.addEventListener("DOMContentLoaded", estilo);
       if (c.token && c.url) {      // dispositivo ya autorizado: abre directo y verifica en segundo plano
         listo = true; if (O.onListo) O.onListo();
         api("ping", { token: c.token }).then(function (r) { if (r && r.ok === false && r.error === "no_autorizado") { ls(tokKey(), null); location.reload(); } else if (r && r.ok) ls(nomKey(), r.nombre); }).catch(function () { /* sin conexión: sigue abierta */ });
